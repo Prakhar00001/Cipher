@@ -34,7 +34,7 @@
 * **🐳 Infrastructure-as-Code (IaC) Auditing**: Scans `Dockerfile` and Kubernetes Pod manifests for root user execution, unpinned `:latest` tags, unsafe `ADD` instructions, and privileged host namespaces.
 * **🔐 Filesystem & Permission Auditor**: Evaluates POSIX permission bits to catch world-writable configs, unencrypted private keys (`id_rsa`, `.pem`), and lingering SQLite/SQL database dumps.
 * **📊 OASIS SARIF v2.1.0 Standardized Exporter**: Native JSON and SARIF output formats for native integration into GitHub Code Scanning Alerts, GitLab SAST, and DefectDojo.
-* **🎨 Retro Terminal UI**: Jacky/Claude-inspired terracotta orange monochrome interface powered by Lipgloss.
+* **🎨 Retro Terminal UI**:orange monochrome interface powered by Lipgloss.
 
 ---
 
