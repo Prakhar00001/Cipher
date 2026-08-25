@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -8,6 +10,7 @@ import (
 	"cipher/internal/printer"
 	"cipher/internal/rules"
 	"cipher/pkg/iac"
+	"cipher/pkg/sarif"
 	"cipher/pkg/sca"
 	"cipher/pkg/secrets"
 
@@ -15,11 +18,19 @@ import (
 )
 
 var (
-	scanHistory bool
-	maxCommits  int
-	skipSCA     bool
-	skipIaC     bool
+	scanHistory  bool
+	maxCommits   int
+	skipSCA      bool
+	skipIaC      bool
+	outputFormat string
+	outputFile   string
 )
+
+type FullReportJSON struct {
+	Secrets   []secrets.SecretFinding `json:"secrets"`
+	SCA       []sca.DependencyFinding `json:"sca"`
+	IaC       []iac.MisconfigFinding  `json:"iac"`
+}
 
 var scanCmd = &cobra.Command{
 	Use:   "scan [path]",
@@ -32,7 +43,6 @@ var scanCmd = &cobra.Command{
 		}
 
 		defaultRules := rules.GetDefaultRules()
-		printer.PrintBanner("0.2.0", targetPath, len(defaultRules))
 
 		// 1. Secrets Engine
 		engine, err := secrets.NewEngine(defaultRules)
@@ -65,10 +75,39 @@ var scanCmd = &cobra.Command{
 			iacFindings = runIaCScan(targetPath)
 		}
 
-		// 4. Render Unified Report
-		printer.PrintReport(secretFindings, scaFindings, iacFindings)
-		return nil
+		// 4. Output Routing
+		switch outputFormat {
+		case "sarif":
+			data, err := sarif.GenerateSARIF("0.2.0", secretFindings, scaFindings, iacFindings)
+			if err != nil {
+				return err
+			}
+			return writeOutput(data)
+		case "json":
+			full := FullReportJSON{
+				Secrets: secretFindings,
+				SCA:     scaFindings,
+				IaC:     iacFindings,
+			}
+			data, err := json.MarshalIndent(full, "", "  ")
+			if err != nil {
+				return err
+			}
+			return writeOutput(data)
+		default:
+			printer.PrintBanner("0.2.0", targetPath, len(defaultRules))
+			printer.PrintReport(secretFindings, scaFindings, iacFindings)
+			return nil
+		}
 	},
+}
+
+func writeOutput(data []byte) error {
+	if outputFile != "" {
+		return os.WriteFile(outputFile, data, 0644)
+	}
+	fmt.Println(string(data))
+	return nil
 }
 
 func runIaCScan(rootPath string) []iac.MisconfigFinding {
@@ -143,5 +182,7 @@ func init() {
 	scanCmd.Flags().IntVarP(&maxCommits, "max-commits", "m", 50, "Max commits to analyze in history mode")
 	scanCmd.Flags().BoolVar(&skipSCA, "skip-sca", false, "Skip dependency vulnerability analysis")
 	scanCmd.Flags().BoolVar(&skipIaC, "skip-iac", false, "Skip IaC misconfiguration analysis")
+	scanCmd.Flags().StringVarP(&outputFormat, "format", "f", "terminal", "Output format: terminal, json, sarif")
+	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output directly to file path")
 	RootCmd.AddCommand(scanCmd)
 }
