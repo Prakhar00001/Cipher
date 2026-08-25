@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"cipher/internal/git"
 	"cipher/internal/printer"
 	"cipher/internal/rules"
+	"cipher/pkg/config"
 	"cipher/pkg/iac"
 	"cipher/pkg/perms"
 	"cipher/pkg/sarif"
@@ -26,13 +28,14 @@ var (
 	skipPerms    bool
 	outputFormat string
 	outputFile   string
+	failOn       string
 )
 
 type FullReportJSON struct {
-	Secrets     []secrets.SecretFinding    `json:"secrets"`
-	SCA         []sca.DependencyFinding    `json:"sca"`
-	IaC         []iac.MisconfigFinding     `json:"iac"`
-	Permissions []perms.PermissionFinding  `json:"permissions"`
+	Secrets     []secrets.SecretFinding   `json:"secrets"`
+	SCA         []sca.DependencyFinding   `json:"sca"`
+	IaC         []iac.MisconfigFinding    `json:"iac"`
+	Permissions []perms.PermissionFinding `json:"permissions"`
 }
 
 var scanCmd = &cobra.Command{
@@ -45,10 +48,17 @@ var scanCmd = &cobra.Command{
 			targetPath = args[0]
 		}
 
-		defaultRules := rules.GetDefaultRules()
+		// Load .cipher.yml configuration
+		cfg, err := config.LoadConfig(targetPath)
+		if err != nil {
+			return fmt.Errorf("failed to parse .cipher.yml: %w", err)
+		}
+
+		// Merge default + custom rules
+		allRules := append(rules.GetDefaultRules(), cfg.ConvertCustomRules()...)
 
 		// 1. Secrets Engine
-		engine, err := secrets.NewEngine(defaultRules)
+		engine, err := secrets.NewEngine(allRules)
 		if err != nil {
 			return err
 		}
@@ -61,37 +71,39 @@ var scanCmd = &cobra.Command{
 		} else {
 			secretFindings, err = scanner.ScanWorkingTree(targetPath)
 		}
-
 		if err != nil {
 			return err
 		}
+		secretFindings = cfg.FilterSecrets(secretFindings)
 
 		// 2. SCA Engine
 		var scaFindings []sca.DependencyFinding
 		if !skipSCA {
-			scaFindings = runSCAScan(targetPath)
+			scaFindings = cfg.FilterSCA(runSCAScan(targetPath))
 		}
 
 		// 3. IaC Engine
 		var iacFindings []iac.MisconfigFinding
 		if !skipIaC {
-			iacFindings = runIaCScan(targetPath)
+			iacFindings = cfg.FilterIaC(runIaCScan(targetPath))
 		}
 
 		// 4. Permissions Engine
 		var permFindings []perms.PermissionFinding
 		if !skipPerms {
-			permFindings = runPermsScan(targetPath)
+			permFindings = cfg.FilterPerms(runPermsScan(targetPath))
 		}
 
-		// 5. Output Routing
+		// 5. Output Formatting
 		switch outputFormat {
 		case "sarif":
-			data, err := sarif.GenerateSARIF("0.3.0", secretFindings, scaFindings, iacFindings, permFindings)
+			data, err := sarif.GenerateSARIF("0.4.0", secretFindings, scaFindings, iacFindings, permFindings)
 			if err != nil {
 				return err
 			}
-			return writeOutput(data)
+			if err := writeOutput(data); err != nil {
+				return err
+			}
 		case "json":
 			full := FullReportJSON{
 				Secrets:     secretFindings,
@@ -103,13 +115,73 @@ var scanCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			return writeOutput(data)
+			if err := writeOutput(data); err != nil {
+				return err
+			}
 		default:
-			printer.PrintBanner("0.3.0", targetPath, len(defaultRules))
+			printer.PrintBanner("0.4.0", targetPath, len(allRules))
 			printer.PrintReport(secretFindings, scaFindings, iacFindings, permFindings)
-			return nil
 		}
+
+		// 6. Evaluate Fail-On Gatekeeping
+		threshold := failOn
+		if threshold == "" {
+			threshold = cfg.FailOn
+		}
+
+		if threshold != "" && shouldFailBuild(threshold, secretFindings, scaFindings, iacFindings, permFindings) {
+			return fmt.Errorf("security scan failed: vulnerabilities exceed policy threshold (%s)", strings.ToUpper(threshold))
+		}
+
+		return nil
 	},
+}
+
+func shouldFailBuild(
+	threshold string,
+	secretsList []secrets.SecretFinding,
+	scaList []sca.DependencyFinding,
+	iacList []iac.MisconfigFinding,
+	permsList []perms.PermissionFinding,
+) bool {
+	targetWeight := severityWeight(threshold)
+
+	for _, f := range secretsList {
+		if severityWeight(string(f.Severity)) >= targetWeight {
+			return true
+		}
+	}
+	for _, df := range scaList {
+		if len(df.Vulnerabilities) > 0 && severityWeight("CRITICAL") >= targetWeight {
+			return true
+		}
+	}
+	for _, f := range iacList {
+		if severityWeight(string(f.Severity)) >= targetWeight {
+			return true
+		}
+	}
+	for _, f := range permsList {
+		if severityWeight(string(f.Severity)) >= targetWeight {
+			return true
+		}
+	}
+	return false
+}
+
+func severityWeight(sev string) int {
+	switch strings.ToUpper(sev) {
+	case "CRITICAL":
+		return 4
+	case "HIGH":
+		return 3
+	case "MEDIUM":
+		return 2
+	case "LOW":
+		return 1
+	default:
+		return 0
+	}
 }
 
 func writeOutput(data []byte) error {
@@ -220,5 +292,6 @@ func init() {
 	scanCmd.Flags().BoolVar(&skipPerms, "skip-perms", false, "Skip filesystem permission audit")
 	scanCmd.Flags().StringVarP(&outputFormat, "format", "f", "terminal", "Output format: terminal, json, sarif")
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output directly to file path")
+	scanCmd.Flags().StringVar(&failOn, "fail-on", "", "Exit with error code if findings meet threshold: critical, high, medium, low")
 	RootCmd.AddCommand(scanCmd)
 }
