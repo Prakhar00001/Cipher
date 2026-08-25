@@ -1,0 +1,17 @@
+# Binaries
+cipher
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test and coverage artifacts
+*.out
+*.test
+coverage.html
+
+# IDE configuration
+.vscode/*
+!.vscode/launch.json
+.idea/
+*.swp
