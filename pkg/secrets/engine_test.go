@@ -32,7 +32,8 @@ func TestEngine_ScanContent(t *testing.T) {
 		t.Errorf("Expected rule ID 'aws-key', got %q", findings[0].RuleID)
 	}
 
-	if findings[0].MatchSnippet != "AKI****************MPLE" {
-		t.Errorf("Unexpected masked snippet: %s", findings[0].MatchSnippet)
+	expectedMask := "AKI**************PLE"
+	if findings[0].MatchSnippet != expectedMask {
+		t.Errorf("Expected snippet %q, got %q", expectedMask, findings[0].MatchSnippet)
 	}
 }
