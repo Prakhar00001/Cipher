@@ -1,6 +1,6 @@
-# Binaries
-cipher
-*.exe
+# Root binary only
+/cipher
+/cipher.exe
 *.dll
 *.so
 *.dylib
