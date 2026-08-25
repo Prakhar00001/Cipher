@@ -1,16 +1,14 @@
 <div align="center">
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 110" width="100%" height="110">
-  <defs>
-    <linearGradient id="claudeOrange" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#F97316" />
-      <stop offset="50%" stop-color="#EA580C" />
-      <stop offset="100%" stop-color="#C2410C" />
-    </linearGradient>
-  </defs>
-  <text x="50%" y="70" font-family="'JetBrains Mono', 'Fira Code', monospace, sans-serif" font-size="64" font-weight="900" letter-spacing="12" fill="url(#claudeOrange)" text-anchor="middle">CIPHER</text>
-  <text x="50%" y="98" font-family="'JetBrains Mono', monospace, sans-serif" font-size="13" font-weight="700" letter-spacing="4" fill="#D97706" text-anchor="middle">&gt;_ AI &amp; STATIC SECURITY ENGINE • TERMINAL ANALYZER</text>
-</svg>
+# <span style="color:#EA580C;">⚡ CIPHER</span>
+
+<a href="https://github.com/Prakhar00001/Cipher">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=40&letterSpacing=8px&duration=1&pause=1000&color=EA580C&center=true&vCenter=true&width=500&height=70&lines=CIPHER" alt="CIPHER" />
+</a>
+
+<p align="center">
+  <code>&gt;_ AI &amp; STATIC SECURITY ENGINE • TERMINAL-NATIVE ANALYZER</code>
+</p>
 
 ### **Terminal-Native Static Security Analyzer & DevSecOps Gatekeeper**
 
@@ -26,12 +24,6 @@
 </div>
 
 
-### **Terminal-Native Static Security Analyzer & DevSecOps Gatekeeper**
-
-[![Go Report Card](https://goreportcard.com/badge/github.com/Prakhar00001/Cipher)](https://goreportcard.com/report/github.com/Prakhar00001/Cipher)
-[![CI & Security Scan](https://github.com/Prakhar00001/Cipher/actions/workflows/ci.yml/badge.svg)](https://github.com/Prakhar00001/Cipher/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Prakhar00001/Cipher?color=orange&label=release)](https://github.com/Prakhar00001/Cipher/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <p align="center">
   <b>Cipher</b> is a unified, high-performance static security analysis CLI built in Go.<br/>
