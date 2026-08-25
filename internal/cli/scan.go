@@ -10,6 +10,7 @@ import (
 	"cipher/internal/printer"
 	"cipher/internal/rules"
 	"cipher/pkg/iac"
+	"cipher/pkg/perms"
 	"cipher/pkg/sarif"
 	"cipher/pkg/sca"
 	"cipher/pkg/secrets"
@@ -22,19 +23,21 @@ var (
 	maxCommits   int
 	skipSCA      bool
 	skipIaC      bool
+	skipPerms    bool
 	outputFormat string
 	outputFile   string
 )
 
 type FullReportJSON struct {
-	Secrets   []secrets.SecretFinding `json:"secrets"`
-	SCA       []sca.DependencyFinding `json:"sca"`
-	IaC       []iac.MisconfigFinding  `json:"iac"`
+	Secrets     []secrets.SecretFinding    `json:"secrets"`
+	SCA         []sca.DependencyFinding    `json:"sca"`
+	IaC         []iac.MisconfigFinding     `json:"iac"`
+	Permissions []perms.PermissionFinding  `json:"permissions"`
 }
 
 var scanCmd = &cobra.Command{
 	Use:   "scan [path]",
-	Short: "Scan repository for secrets, vulnerabilities, and misconfigurations",
+	Short: "Scan repository for secrets, vulnerabilities, misconfigurations, and permissions",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		targetPath := "."
@@ -75,19 +78,26 @@ var scanCmd = &cobra.Command{
 			iacFindings = runIaCScan(targetPath)
 		}
 
-		// 4. Output Routing
+		// 4. Permissions Engine
+		var permFindings []perms.PermissionFinding
+		if !skipPerms {
+			permFindings = runPermsScan(targetPath)
+		}
+
+		// 5. Output Routing
 		switch outputFormat {
 		case "sarif":
-			data, err := sarif.GenerateSARIF("0.2.0", secretFindings, scaFindings, iacFindings)
+			data, err := sarif.GenerateSARIF("0.3.0", secretFindings, scaFindings, iacFindings, permFindings)
 			if err != nil {
 				return err
 			}
 			return writeOutput(data)
 		case "json":
 			full := FullReportJSON{
-				Secrets: secretFindings,
-				SCA:     scaFindings,
-				IaC:     iacFindings,
+				Secrets:     secretFindings,
+				SCA:         scaFindings,
+				IaC:         iacFindings,
+				Permissions: permFindings,
 			}
 			data, err := json.MarshalIndent(full, "", "  ")
 			if err != nil {
@@ -95,8 +105,8 @@ var scanCmd = &cobra.Command{
 			}
 			return writeOutput(data)
 		default:
-			printer.PrintBanner("0.2.0", targetPath, len(defaultRules))
-			printer.PrintReport(secretFindings, scaFindings, iacFindings)
+			printer.PrintBanner("0.3.0", targetPath, len(defaultRules))
+			printer.PrintReport(secretFindings, scaFindings, iacFindings, permFindings)
 			return nil
 		}
 	},
@@ -108,6 +118,31 @@ func writeOutput(data []byte) error {
 	}
 	fmt.Println(string(data))
 	return nil
+}
+
+func runPermsScan(rootPath string) []perms.PermissionFinding {
+	var findings []perms.PermissionFinding
+	auditor := perms.NewAuditor()
+
+	_ = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == ".git" || name == "node_modules" || name == "vendor" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		relPath, _ := filepath.Rel(rootPath, path)
+		f := auditor.AuditFile(relPath, info)
+		findings = append(findings, f...)
+		return nil
+	})
+
+	return findings
 }
 
 func runIaCScan(rootPath string) []iac.MisconfigFinding {
@@ -182,6 +217,7 @@ func init() {
 	scanCmd.Flags().IntVarP(&maxCommits, "max-commits", "m", 50, "Max commits to analyze in history mode")
 	scanCmd.Flags().BoolVar(&skipSCA, "skip-sca", false, "Skip dependency vulnerability analysis")
 	scanCmd.Flags().BoolVar(&skipIaC, "skip-iac", false, "Skip IaC misconfiguration analysis")
+	scanCmd.Flags().BoolVar(&skipPerms, "skip-perms", false, "Skip filesystem permission audit")
 	scanCmd.Flags().StringVarP(&outputFormat, "format", "f", "terminal", "Output format: terminal, json, sarif")
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output directly to file path")
 	RootCmd.AddCommand(scanCmd)

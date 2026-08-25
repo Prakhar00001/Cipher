@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"cipher/pkg/iac"
+	"cipher/pkg/perms"
 	"cipher/pkg/sca"
 	"cipher/pkg/secrets"
 
@@ -79,12 +80,13 @@ func PrintBanner(version string, targetPath string, rulesCount int) {
 		labelStyle.Render("status: "), okStyle.Render("ARMED [OK]"),
 	)
 
-	rightCol := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n\n%s\n%s\n%s",
+	rightCol := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s\n\n%s\n%s\n%s",
 		highlightStyle.Render("Active Subsystems"),
 		fmt.Sprintf("  %s %s", labelStyle.Render("secrets:"), valueStyle.Render(fmt.Sprintf("%d signatures (entropy + regex)", rulesCount))),
 		fmt.Sprintf("  %s %s", labelStyle.Render("history:"), valueStyle.Render("zero-alloc packfile stream")),
 		fmt.Sprintf("  %s %s", labelStyle.Render("sca:    "), valueStyle.Render("osv.dev vulnerability graph")),
 		fmt.Sprintf("  %s %s", labelStyle.Render("iac:    "), valueStyle.Render("dockerfile & k8s static linter")),
+		fmt.Sprintf("  %s %s", labelStyle.Render("perms:  "), valueStyle.Render("file mode & repository exposure audit")),
 		highlightStyle.Render("Intelligence & Heuristics"),
 		fmt.Sprintf("  %s %s", labelStyle.Render("entropy:"), valueStyle.Render("shannon class variance (H >= 3.0)")),
 		fmt.Sprintf("  %s %s", labelStyle.Render("context:"), valueStyle.Render("mock/fixture auto-deprioritization")),
@@ -106,8 +108,13 @@ func PrintBanner(version string, targetPath string, rulesCount int) {
 	fmt.Println()
 }
 
-func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.DependencyFinding, iacFindings []iac.MisconfigFinding) {
-	total := len(secretFindings) + len(scaFindings) + len(iacFindings)
+func PrintReport(
+	secretFindings []secrets.SecretFinding,
+	scaFindings []sca.DependencyFinding,
+	iacFindings []iac.MisconfigFinding,
+	permFindings []perms.PermissionFinding,
+) {
+	total := len(secretFindings) + len(scaFindings) + len(iacFindings) + len(permFindings)
 
 	statusLine := fmt.Sprintf("─── [ SCAN RESULTS: %d FINDINGS ] ──────────────────────────────────────────", total)
 	fmt.Println(divider.Render(statusLine))
@@ -204,6 +211,28 @@ func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.Depen
 			if f.Snippet != "" {
 				fmt.Printf("         %s %s\n", labelStyle.Render("code:   "), critStyle.Render(f.Snippet))
 			}
+			fmt.Printf("         %s %s\n", labelStyle.Render("action: "), valueStyle.Render(f.Remediation))
+			fmt.Println(divider.Render("  ──────────────────────────────────────────────────────────────────────"))
+		}
+	}
+
+	fmt.Println()
+
+	// Section 4: File Permissions & Sensitive Files
+	fmt.Printf("%s\n", sectionHeader.Render("● FILESYSTEM & REPOSITORY PERMISSIONS"))
+	if len(permFindings) == 0 {
+		fmt.Println("  " + okStyle.Render("✔ File modes and repository permissions are secure."))
+	} else {
+		for _, f := range permFindings {
+			sev := medStyle.Render("MED ")
+			if f.Severity == perms.SeverityCritical {
+				sev = critStyle.Render("CRIT")
+			} else if f.Severity == perms.SeverityHigh {
+				sev = highStyle.Render("HIGH")
+			}
+
+			fmt.Printf("  [%s] %s %s\n", sev, highlightStyle.Render(f.Description), labelStyle.Render("("+f.RuleID+")"))
+			fmt.Printf("         %s %s (mode: %s)\n", labelStyle.Render("file:   "), valueStyle.Render(f.Path), f.OctalMode)
 			fmt.Printf("         %s %s\n", labelStyle.Render("action: "), valueStyle.Render(f.Remediation))
 			fmt.Println(divider.Render("  ──────────────────────────────────────────────────────────────────────"))
 		}
