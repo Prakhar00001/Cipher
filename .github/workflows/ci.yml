@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build, Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Verify Module Integrity
+        run: go mod verify
+
+      - name: Run Unit Tests
+        run: go test -v -race ./...
+
+      - name: Build Binary
+        run: go build -v -o cipher ./cmd/cipher
+
+      - name: Run Self-Scan Verification
+        run: ./cipher scan .
