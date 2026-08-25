@@ -24,14 +24,6 @@
 </div>
 
 
-
-<p align="center">
-  <b>Cipher</b> is a unified, high-performance static security analysis CLI built in Go.<br/>
-  It inspects codebases, Git packfiles, dependencies, and container manifests in milliseconds to detect hardcoded secrets, open-source CVEs, IaC misconfigurations, and filesystem permission vulnerabilities before they reach production.
-</p>
-
-</div>
-
 ---
 
 ## ⚡ Key Highlights
