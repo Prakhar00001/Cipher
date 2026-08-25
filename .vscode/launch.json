@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Cipher: Scan Working Directory",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/cipher",
+      "args": ["scan", "."]
+    },
+    {
+      "name": "Cipher: Scan Git Commit History",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/cipher",
+      "args": ["scan", "--history", "."]
+    }
+  ]
+}
