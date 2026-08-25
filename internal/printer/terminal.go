@@ -4,38 +4,28 @@ import (
 	"fmt"
 	"strings"
 
+	"cipher/pkg/iac"
 	"cipher/pkg/sca"
 	"cipher/pkg/secrets"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Full Claude / Jacky Orange Monochrome Palette
 const (
-	ColorPrimaryOrange = "#F97316" // Bright Claude orange
-	ColorWarmOrange    = "#EA580C" // Mid-tone accent orange
-	ColorDeepOrange    = "#C2410C" // Darker terracotta orange
-	ColorDarkBorder    = "#7C2D12" // Deep bronze/orange for borders
-	ColorMutedOrange   = "#A16207" // Muted brownish orange for labels
-	ColorBrightText    = "#FED7AA" // High contrast light orange/cream text
-	ColorSubtleText    = "#FDBA74" // Secondary orange text
+	ColorPrimaryOrange = "#F97316"
+	ColorWarmOrange    = "#EA580C"
+	ColorDeepOrange    = "#C2410C"
+	ColorDarkBorder    = "#7C2D12"
+	ColorMutedOrange   = "#A16207"
+	ColorBrightText    = "#FED7AA"
+	ColorSubtleText    = "#FDBA74"
 )
 
 var (
-	// Banners and Headers
-	bannerStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(ColorPrimaryOrange))
+	bannerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
+	taglineStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorWarmOrange))
+	sectionHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
 
-	taglineStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(ColorWarmOrange))
-
-	sectionHeader = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(ColorPrimaryOrange))
-
-	// Borders & Frames
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(ColorWarmOrange)).
@@ -47,29 +37,17 @@ var (
 			BorderForeground(lipgloss.Color(ColorDarkBorder)).
 			Padding(0, 1)
 
-	divider = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorDarkBorder))
+	divider = lipgloss.NewStyle().Foreground(lipgloss.Color(ColorDarkBorder))
 
-	// Typography & Metrics
-	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorMutedOrange))
+	labelStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color(ColorMutedOrange))
+	valueStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color(ColorSubtleText))
+	brightStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorBrightText))
+	highlightStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
 
-	valueStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(ColorSubtleText))
-
-	brightStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(ColorBrightText))
-
-	highlightStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(ColorPrimaryOrange))
-
-	// Status & Severities in Orange Spectrum
-	critStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF3B30"))
-	highStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
-	medStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorWarmOrange))
-	okStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
+	critStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF3B30"))
+	highStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
+	medStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorWarmOrange))
+	okStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
 	robotStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ColorPrimaryOrange))
 )
 
@@ -89,13 +67,11 @@ const asciiRobot = `
       _│_      
    [ CIPHER ]  `
 
-// PrintBanner outputs the JACKY-style orange dashboard
 func PrintBanner(version string, targetPath string, rulesCount int) {
 	fmt.Println(bannerStyle.Render(asciiHeader))
 	fmt.Println(taglineStyle.Render(" >_ AI & STATIC SECURITY ENGINE • TERMINAL-NATIVE ANALYZER"))
 	fmt.Println()
 
-	// Left column: Orange Robot Mascot + session info
 	leftCol := fmt.Sprintf("%s\n\n%s\n%s %s\n%s %s",
 		robotStyle.Render(asciiRobot),
 		labelStyle.Render("session:"),
@@ -103,16 +79,15 @@ func PrintBanner(version string, targetPath string, rulesCount int) {
 		labelStyle.Render("status: "), okStyle.Render("ARMED [OK]"),
 	)
 
-	// Right column: Module breakdown
-	rightCol := fmt.Sprintf("%s\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s",
+	rightCol := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n\n%s\n%s\n%s",
 		highlightStyle.Render("Active Subsystems"),
 		fmt.Sprintf("  %s %s", labelStyle.Render("secrets:"), valueStyle.Render(fmt.Sprintf("%d signatures (entropy + regex)", rulesCount))),
 		fmt.Sprintf("  %s %s", labelStyle.Render("history:"), valueStyle.Render("zero-alloc packfile stream")),
 		fmt.Sprintf("  %s %s", labelStyle.Render("sca:    "), valueStyle.Render("osv.dev vulnerability graph")),
+		fmt.Sprintf("  %s %s", labelStyle.Render("iac:    "), valueStyle.Render("dockerfile & k8s static linter")),
 		highlightStyle.Render("Intelligence & Heuristics"),
 		fmt.Sprintf("  %s %s", labelStyle.Render("entropy:"), valueStyle.Render("shannon class variance (H >= 3.0)")),
 		fmt.Sprintf("  %s %s", labelStyle.Render("context:"), valueStyle.Render("mock/fixture auto-deprioritization")),
-		fmt.Sprintf("  %s %s", labelStyle.Render("lockset:"), valueStyle.Render("go.mod, package-lock.json, requirements.txt")),
 	)
 
 	grid := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -131,9 +106,8 @@ func PrintBanner(version string, targetPath string, rulesCount int) {
 	fmt.Println()
 }
 
-// PrintReport formats findings inside retro-styled orange cards
-func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.DependencyFinding) {
-	total := len(secretFindings) + len(scaFindings)
+func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.DependencyFinding, iacFindings []iac.MisconfigFinding) {
+	total := len(secretFindings) + len(scaFindings) + len(iacFindings)
 
 	statusLine := fmt.Sprintf("─── [ SCAN RESULTS: %d FINDINGS ] ──────────────────────────────────────────", total)
 	fmt.Println(divider.Render(statusLine))
@@ -145,14 +119,11 @@ func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.Depen
 		fmt.Println("  " + okStyle.Render("✔ No credentials detected."))
 	} else {
 		for _, f := range secretFindings {
-			var sev string
-			switch f.Severity {
-			case secrets.SeverityCritical:
+			sev := medStyle.Render("MED ")
+			if f.Severity == secrets.SeverityCritical {
 				sev = critStyle.Render("CRIT")
-			case secrets.SeverityHigh:
+			} else if f.Severity == secrets.SeverityHigh {
 				sev = highStyle.Render("HIGH")
-			default:
-				sev = medStyle.Render("MED ")
 			}
 
 			loc := fmt.Sprintf("%s:%d:%d", f.Path, f.LineNumber, f.ColumnStart)
@@ -208,6 +179,32 @@ func PrintReport(secretFindings []secrets.SecretFinding, scaFindings []sca.Depen
 					labelStyle.Render(aliasStr),
 				)
 			}
+			fmt.Println(divider.Render("  ──────────────────────────────────────────────────────────────────────"))
+		}
+	}
+
+	fmt.Println()
+
+	// Section 3: IaC Misconfigurations
+	fmt.Printf("%s\n", sectionHeader.Render("● IAC & CONFIGURATION MISCONFIGURATIONS"))
+	if len(iacFindings) == 0 {
+		fmt.Println("  " + okStyle.Render("✔ No IaC misconfigurations detected."))
+	} else {
+		for _, f := range iacFindings {
+			sev := medStyle.Render("MED ")
+			if f.Severity == iac.SeverityCritical {
+				sev = critStyle.Render("CRIT")
+			} else if f.Severity == iac.SeverityHigh {
+				sev = highStyle.Render("HIGH")
+			}
+
+			loc := fmt.Sprintf("%s:%d", f.Path, f.LineNumber)
+			fmt.Printf("  [%s] %s %s\n", sev, highlightStyle.Render(f.Description), labelStyle.Render("("+f.RuleID+")"))
+			fmt.Printf("         %s %s (%s)\n", labelStyle.Render("target: "), valueStyle.Render(loc), f.TargetType)
+			if f.Snippet != "" {
+				fmt.Printf("         %s %s\n", labelStyle.Render("code:   "), critStyle.Render(f.Snippet))
+			}
+			fmt.Printf("         %s %s\n", labelStyle.Render("action: "), valueStyle.Render(f.Remediation))
 			fmt.Println(divider.Render("  ──────────────────────────────────────────────────────────────────────"))
 		}
 	}
