@@ -21,7 +21,7 @@ func TestGenerateSARIF(t *testing.T) {
 		},
 	}
 
-	sarifBytes, err := GenerateSARIF("0.2.0", findings, nil, nil)
+	sarifBytes, err := GenerateSARIF("0.3.0", findings, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to generate SARIF: %v", err)
 	}
